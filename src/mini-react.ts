@@ -17,6 +17,7 @@ type VirtualElement = {
 
 type FiberNodeDOM = Element | Text | null | undefined;
 
+// deno-lint-ignore no-explicit-any
 type FiberNode<S = any> = VirtualElement & {
   alternate: FiberNode<S> | null;
   dom?: FiberNodeDOM;
@@ -334,6 +335,7 @@ const updateDOM = (
         removePropValue as EventListenerOrEventListenerObject,
       );
     } else if (removePropKey !== defaultPropKeys) {
+      // deno-lint-ignore no-explicit-any
       (DOM as any)[removePropKey] = '';
     }
   });
@@ -345,6 +347,7 @@ const updateDOM = (
         addPropValue as EventListenerOrEventListenerObject,
       );
     } else if (addPropKey !== defaultPropKeys) {
+      // deno-lint-ignore no-explicit-any
       (DOM as any)[addPropKey] = addPropValue;
     }
   });

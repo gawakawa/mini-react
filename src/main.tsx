@@ -1,7 +1,5 @@
-import React from './mini-react.ts';
+import { createElement, Fragment, render, useState } from './mini-react.ts';
 import './styles.css';
-
-const { render, useState } = React;
 
 function Square({ value, onSquareClick }) {
   return (

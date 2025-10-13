@@ -8,15 +8,12 @@
   "compilerOptions": {
     "lib": ["ES2020", "DOM", "DOM.Iterable"],
     "jsx": "react",
+    "jsxFactory": "createElement",
+    "jsxFragmentFactory": "Fragment",
     "strict": true
   },
   "imports": {
     "@deno/vite-plugin": "npm:@deno/vite-plugin@^1.0.4",
-    "@types/react": "npm:@types/react@^19.0.10",
-    "@types/react-dom": "npm:@types/react-dom@^19.0.4",
-    "@vitejs/plugin-react-swc": "npm:@vitejs/plugin-react-swc@^3.8.0",
-    "react": "npm:react@^19.0.0",
-    "react-dom": "npm:react-dom@^19.0.0",
     "vite": "npm:vite@^6.1.1"
   },
   "lint": {

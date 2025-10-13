@@ -445,6 +445,8 @@ void (function main() {
   globalThis.requestIdleCallback(workLoop);
 })();
 
+export { Component, createElement, Fragment, render, useState };
+
 export default {
   createElement,
   render,

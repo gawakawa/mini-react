@@ -5,7 +5,7 @@ import deno from '@deno/vite-plugin';
 export default defineConfig({
   plugins: [deno()],
   esbuild: {
-    jsxFactory: 'React.createElement',
-    jsxFragment: 'React.Fragment',
+    jsxFactory: 'createElement',
+    jsxFragment: 'Fragment',
   },
 });

@@ -25,3 +25,6 @@ dist-ssr
 *.sw?
 
 .direnv
+
+# Vite temporary files
+*.timestamp-*.mjs

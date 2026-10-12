@@ -22,8 +22,12 @@
         dependencies = [
           "ursi.debug"
           "effect"
+          "foldable-traversable"
+          "maybe"
           "prelude"
+          "web-dom"
           "web-events"
+          "web-html"
         ];
 
         test-dependencies = [

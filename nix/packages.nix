@@ -25,6 +25,7 @@
           "foldable-traversable"
           "maybe"
           "prelude"
+          "refs"
           "web-dom"
           "web-events"
           "web-html"

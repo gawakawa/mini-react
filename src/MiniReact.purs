@@ -1,6 +1,8 @@
 module MiniReact
   ( VirtualElement(..)
   , Prop(..)
+  , Component
+  , component
   , createDOM
   , updateDOM
   ) where
@@ -28,6 +30,18 @@ data VirtualElement
   = HostComponent String (Array Prop) (Array VirtualElement)
   | HostText String
   | Fragment (Array VirtualElement)
+  | FunctionComponent Component
+
+newtype Component = Component (forall r. (forall props. (props -> Effect VirtualElement) -> props -> r) -> r)
+
+component :: forall props. (props -> Effect VirtualElement) -> props -> VirtualElement
+component render props = FunctionComponent $ Component \k -> k render props
+
+runComponent :: Component -> Effect VirtualElement
+runComponent (Component c) = c \render props -> render props
+
+sameComponent :: Component -> Component -> Boolean
+sameComponent (Component a) (Component b) = a \ra _ -> b \rb _ -> unsafeRefEq ra rb
 
 data Prop
   = Property String String
@@ -67,6 +81,8 @@ hookIndex = unsafePerformEffect $ Ref.new 0
 
 foreign import setProperty :: String -> String -> Element -> Effect Unit
 
+foreign import unsafeRefEq :: forall a b. a -> b -> Boolean
+
 getDocument :: Effect Document
 getDocument = do
   w <- window
@@ -95,3 +111,4 @@ createDOM = case _ of
     t <- createTextNode text doc
     pure $ Just $ Text.toNode t
   Fragment _ -> pure Nothing
+  FunctionComponent _ -> pure Nothing

@@ -9,8 +9,10 @@ module MiniReact
 
 import Prelude
 
+import Data.Array ((!!), length)
 import Data.Foldable (for_)
-import Data.Maybe (Maybe(..))
+import Data.Maybe (Maybe(..), isJust)
+import Data.Traversable (for)
 import Effect (Effect)
 import Effect.Ref (Ref)
 import Effect.Ref as Ref
@@ -60,6 +62,15 @@ type FiberRec =
   , sibling :: Maybe Fiber
   , alternate :: Maybe Fiber
   }
+
+createFiber :: FiberRec -> Effect Fiber
+createFiber rec = Fiber <$> Ref.new rec
+
+readFiber :: Fiber -> Effect FiberRec
+readFiber (Fiber ref) = Ref.read ref
+
+modifyFiber :: Fiber -> (FiberRec -> FiberRec) -> Effect Unit
+modifyFiber (Fiber ref) f = Ref.modify_ f ref
 
 wipRoot :: Ref (Maybe Fiber)
 wipRoot = unsafePerformEffect $ Ref.new Nothing
@@ -112,3 +123,52 @@ createDOM = case _ of
     pure $ Just $ Text.toNode t
   Fragment _ -> pure Nothing
   FunctionComponent _ -> pure Nothing
+
+reconcileChildren :: Fiber -> Array VirtualElement -> Effect Unit
+reconcileChildren wip elements = do
+  { alternate } <- readFiber wip
+  oldChild <- case alternate of
+    Nothing -> pure Nothing
+    Just alt -> _.child <$> readFiber alt
+  go 0 oldChild Nothing
+  where
+  go index oldFiber prevSibling =
+    when (index < length elements || isJust oldFiber) do
+      old <- for oldFiber \fiber -> { fiber, rec: _ } <$> readFiber fiber
+      let
+        element = elements !! index
+        isSameType = case old, element of
+          Just o, Just el -> sameType o.rec.vnode el
+          _, _ -> false
+      newFiber <- case old, element of
+        Just o, Just el | isSameType -> Just <$> createFiber
+          { vnode: el
+          , dom: o.rec.dom
+          , effectTag: Just Update
+          , parent: Just wip
+          , child: Nothing
+          , sibling: Nothing
+          , alternate: Just o.fiber
+          }
+        _, Just el -> Just <$> createFiber
+          { vnode: el
+          , dom: Nothing
+          , effectTag: Just Placement
+          , parent: Just wip
+          , child: Nothing
+          , sibling: Nothing
+          , alternate: Nothing
+          }
+        _, Nothing -> pure Nothing
+      unless isSameType $ for_ old \o -> Ref.modify_ (_ <> [ o.fiber ]) deletions
+      if index == 0 then modifyFiber wip _ { child = newFiber }
+      else for_ prevSibling \p -> modifyFiber p _ { sibling = newFiber }
+      go (index + 1) (old >>= _.rec.sibling) newFiber
+
+sameType :: VirtualElement -> VirtualElement -> Boolean
+sameType = case _, _ of
+  HostComponent a _ _, HostComponent b _ _ -> a == b
+  HostText _, HostText _ -> true
+  Fragment _, Fragment _ -> true
+  FunctionComponent a, FunctionComponent b -> sameComponent a b
+  _, _ -> false

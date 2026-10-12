@@ -37,6 +37,7 @@ deno lint
 The entire React clone is implemented in a single file with these key components:
 
 **Fiber Architecture**
+
 - `FiberNode`: Reconciliation unit representing virtual DOM nodes with links to parent (`return`), child, sibling, and alternate (previous fiber)
 - `wipRoot`: Work-in-progress root fiber
 - `currentRoot`: Currently committed fiber tree
@@ -44,24 +45,29 @@ The entire React clone is implemented in a single file with these key components
 - `deletions`: Fibers marked for removal
 
 **Reconciliation Engine**
+
 - `reconcileChildren()`: Diffs old and new fiber trees, marking changes with `effectTag` ('UPDATE', 'REPLACEMENT', or deletion)
 - `performUnitOfWork()`: Processes one fiber unit, handling function components, class components, DOM elements, and Fragments
 - `workLoop()`: Uses `requestIdleCallback` to perform work in browser idle time
 - `commitRoot()`: Commits all fiber changes to actual DOM after reconciliation completes
 
 **Component Support**
+
 - Function components: Executed and their return value becomes children
 - Class components: Abstract `Component` base class with `state`, `setState`, and `render` methods
 - Fragment: Symbol-based fragment support using `Symbol.for('react.fragment')`
 
 **Hooks**
+
 - `useState()`: Implemented with fiber-attached hook queue, supports object merging for state updates
 
 **DOM Operations**
+
 - `createDOM()`: Creates DOM nodes from fibers
 - `updateDOM()`: Updates DOM properties and event listeners, handling removals and additions
 
 **requestIdleCallback Polyfill**
+
 - Custom implementation using `MessageChannel` and `requestAnimationFrame` for browsers without native support
 
 ### Project Structure
@@ -77,6 +83,7 @@ The entire React clone is implemented in a single file with these key components
 ## CI/CD
 
 GitHub Actions workflow (`.github/workflows/deno.yml`) runs on push/PR:
+
 1. Format verification (`deno fmt --check`)
 2. Linting (`deno lint`)
 3. Tests are commented out but can be enabled

@@ -23,6 +23,7 @@
           "ursi.debug"
           "effect"
           "prelude"
+          "web-events"
         ];
 
         test-dependencies = [

@@ -5,18 +5,22 @@ module MiniReact
   , component
   , createDOM
   , updateDOM
+  , useState
   ) where
 
 import Prelude
 
-import Data.Array ((!!), length)
+import Data.Array ((!!), last, length)
 import Data.Foldable (for_)
-import Data.Maybe (Maybe(..), isJust)
+import Data.Maybe (Maybe(..), fromMaybe, isJust)
 import Data.Traversable (for)
+import Data.Tuple.Nested ((/\), type (/\))
 import Effect (Effect)
+import Effect.Exception (throw)
 import Effect.Ref (Ref)
 import Effect.Ref as Ref
 import Effect.Unsafe (unsafePerformEffect)
+import Unsafe.Coerce (unsafeCoerce)
 import Web.DOM.Document (Document, createElement, createTextNode)
 import Web.DOM.Element (Element)
 import Web.DOM.Element as Element
@@ -61,7 +65,20 @@ type FiberRec =
   , child :: Maybe Fiber
   , sibling :: Maybe Fiber
   , alternate :: Maybe Fiber
+  , hooks :: Array Hook
   }
+
+-- The state type of each hook is erased; the hooks call-order rule is what
+-- guarantees fromHookState gets back the type that toHookState put in.
+data HookState
+
+type Hook = Ref { state :: HookState, queue :: Array HookState }
+
+toHookState :: forall s. s -> HookState
+toHookState = unsafeCoerce
+
+fromHookState :: forall s. HookState -> s
+fromHookState = unsafeCoerce
 
 createFiber :: FiberRec -> Effect Fiber
 createFiber rec = Fiber <$> Ref.new rec
@@ -149,6 +166,7 @@ reconcileChildren wip elements = do
           , child: Nothing
           , sibling: Nothing
           , alternate: Just o.fiber
+          , hooks: []
           }
         _, Just el -> Just <$> createFiber
           { vnode: el
@@ -158,6 +176,7 @@ reconcileChildren wip elements = do
           , child: Nothing
           , sibling: Nothing
           , alternate: Nothing
+          , hooks: []
           }
         _, Nothing -> pure Nothing
       unless isSameType $ for_ old \o -> Ref.modify_ (_ <> [ o.fiber ]) deletions
@@ -172,3 +191,44 @@ sameType = case _, _ of
   Fragment _, Fragment _ -> true
   FunctionComponent a, FunctionComponent b -> sameComponent a b
   _, _ -> false
+
+useState :: forall s. s -> Effect (s /\ (s -> Effect Unit))
+useState initial = do
+  fiber <- Ref.read wipFiber >>= case _ of
+    Nothing -> throw "useState called outside a function component"
+    Just f -> pure f
+  { alternate } <- readFiber fiber
+  index <- Ref.read hookIndex
+  oldHook <- case alternate of
+    Nothing -> pure Nothing
+    Just alt -> do
+      { hooks } <- readFiber alt
+      pure $ hooks !! index
+  hook <- case oldHook of
+    Just h -> pure h
+    Nothing -> Ref.new { state: toHookState initial, queue: [] }
+  Ref.modify_ (\h -> { state: fromMaybe h.state $ last h.queue, queue: [] }) hook
+  modifyFiber fiber \rec -> rec { hooks = rec.hooks <> [ hook ] }
+  Ref.modify_ (_ + 1) hookIndex
+  { state } <- Ref.read hook
+  let
+    setState value = do
+      Ref.modify_ (\h -> h { queue = h.queue <> [ toHookState value ] }) hook
+      current <- Ref.read currentRoot
+      for_ current \root -> do
+        { vnode, dom } <- readFiber root
+        newRoot <- createFiber
+          { vnode
+          , dom
+          , effectTag: Nothing
+          , parent: Nothing
+          , child: Nothing
+          , sibling: Nothing
+          , alternate: Just root
+          , hooks: []
+          }
+        Ref.write (Just newRoot) wipRoot
+        Ref.write (Just newRoot) nextUnitOfWork
+        Ref.write [] deletions
+        Ref.write Nothing currentRoot
+  pure $ fromHookState state /\ setState

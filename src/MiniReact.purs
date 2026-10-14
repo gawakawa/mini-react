@@ -9,11 +9,11 @@ module MiniReact
 
 import Prelude
 
-import Data.Array ((!!), last, length)
+import Data.Array (last, length, (!!))
 import Data.Foldable (for_, traverse_)
 import Data.Maybe (Maybe(..), fromMaybe, isJust, isNothing)
 import Data.Traversable (for)
-import Data.Tuple.Nested ((/\), type (/\))
+import Data.Tuple.Nested (type (/\), (/\))
 import Effect (Effect, whileE)
 import Effect.Exception (throw)
 import Effect.Ref (Ref)
@@ -37,16 +37,22 @@ data VirtualElement
   | Fragment (Array VirtualElement)
   | FunctionComponent Component
 
-newtype Component = Component (forall r. (forall props. (props -> Effect VirtualElement) -> props -> r) -> r)
+newtype Component = Component
+  ( forall r
+     . (forall props. (props -> Effect VirtualElement) -> props -> r)
+    -> r
+  )
 
-component :: forall props. (props -> Effect VirtualElement) -> props -> VirtualElement
+component
+  :: forall props. (props -> Effect VirtualElement) -> props -> VirtualElement
 component renderer props = FunctionComponent $ Component \k -> k renderer props
 
 runComponent :: Component -> Effect VirtualElement
 runComponent (Component c) = c \renderer props -> renderer props
 
 sameComponent :: Component -> Component -> Boolean
-sameComponent (Component a) (Component b) = a \ra _ -> b \rb _ -> unsafeRefEq ra rb
+sameComponent (Component a) (Component b) =
+  a \ra _ -> b \rb _ -> unsafeRefEq ra rb
 
 data Prop
   = Property String String
@@ -182,7 +188,8 @@ reconcileChildren wip elements = do
           , hooks: []
           }
         _, Nothing -> pure Nothing
-      unless isSameType $ for_ old \o -> Ref.modify_ (_ <> [ o.fiber ]) deletions
+      unless isSameType $ for_ old \o ->
+        Ref.modify_ (_ <> [ o.fiber ]) deletions
       if index == 0 then modifyFiber wip _ { child = newFiber }
       else for_ prevSibling \p -> modifyFiber p _ { sibling = newFiber }
       go (index + 1) (old >>= _.rec.sibling) newFiber
@@ -344,7 +351,9 @@ useState initial = do
   hook <- case oldHook of
     Just h -> pure h
     Nothing -> Ref.new { state: toHookState initial, queue: [] }
-  Ref.modify_ (\h -> { state: fromMaybe h.state $ last h.queue, queue: [] }) hook
+  Ref.modify_
+    (\h -> { state: fromMaybe h.state $ last h.queue, queue: [] })
+    hook
   modifyFiber fiber \rec -> rec { hooks = rec.hooks <> [ hook ] }
   Ref.modify_ (_ + 1) hookIndex
   { state } <- Ref.read hook

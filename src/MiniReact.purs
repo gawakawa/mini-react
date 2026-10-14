@@ -12,7 +12,7 @@ import Prelude
 
 import Data.Array ((!!), last, length)
 import Data.Foldable (for_)
-import Data.Maybe (Maybe(..), fromMaybe, isJust)
+import Data.Maybe (Maybe(..), fromMaybe, isJust, isNothing)
 import Data.Traversable (for)
 import Data.Tuple.Nested ((/\), type (/\))
 import Effect (Effect)
@@ -191,6 +191,41 @@ sameType = case _, _ of
   Fragment _, Fragment _ -> true
   FunctionComponent a, FunctionComponent b -> sameComponent a b
   _, _ -> false
+
+performUnitOfWork :: Fiber -> Effect (Maybe Fiber)
+performUnitOfWork fiber = do
+  rec <- readFiber fiber
+  let
+    ensureDOM = when (isNothing rec.dom) do
+      dom <- createDOM rec.vnode
+      modifyFiber fiber _ { dom = dom }
+  case rec.vnode of
+    FunctionComponent c -> do
+      Ref.write (Just fiber) wipFiber
+      modifyFiber fiber _ { hooks = [] }
+      Ref.write 0 hookIndex
+      child <- runComponent c
+      reconcileChildren fiber [ child ]
+    HostComponent _ _ children -> do
+      ensureDOM
+      reconcileChildren fiber children
+    HostText _ -> ensureDOM
+    Fragment children -> reconcileChildren fiber children
+  nextFiber fiber
+
+nextFiber :: Fiber -> Effect (Maybe Fiber)
+nextFiber fiber = do
+  { child } <- readFiber fiber
+  case child of
+    Just c -> pure $ Just c
+    Nothing -> climb fiber
+  where
+  climb f = do
+    { sibling, parent } <- readFiber f
+    case sibling, parent of
+      Just s, _ -> pure $ Just s
+      Nothing, Just p -> climb p
+      Nothing, Nothing -> pure Nothing
 
 useState :: forall s. s -> Effect (s /\ (s -> Effect Unit))
 useState initial = do

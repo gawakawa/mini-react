@@ -1,7 +1,17 @@
 import { defineConfig } from "vite";
 
-// Every value here is the Vite 8 default, written out explicitly so the build
-// is declared rather than inherited.
+// Compile JSX to mini-react's createElement / Fragment (jsx.js).
+const jsx = {
+  runtime: "classic",
+  pragma: "createElement",
+  pragmaFrag: "Fragment",
+  // Otherwise dev builds add __self / __source props, which jsx.js would
+  // turn into DOM properties.
+  development: false,
+};
+
+// Apart from the JSX settings, every value here is the Vite 8 default, written
+// out explicitly so the build is declared rather than inherited.
 export default defineConfig({
   root: ".",
   base: "/",
@@ -11,6 +21,14 @@ export default defineConfig({
 
   resolve: {
     preserveSymlinks: false,
+  },
+
+  oxc: { jsx },
+
+  // The dependency scanner does not read `oxc`; without this it looks for
+  // react/jsx-dev-runtime.
+  optimizeDeps: {
+    rolldownOptions: { transform: { jsx } },
   },
 
   build: {

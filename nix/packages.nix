@@ -20,7 +20,6 @@
 
       ps = purs-nix.purs {
         dependencies = [
-          "ursi.debug"
           "arrays"
           "effect"
           "exceptions"

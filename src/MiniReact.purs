@@ -11,7 +11,7 @@ module MiniReact
 import Prelude
 
 import Data.Array ((!!), last, length)
-import Data.Foldable (for_)
+import Data.Foldable (for_, traverse_)
 import Data.Maybe (Maybe(..), fromMaybe, isJust, isNothing)
 import Data.Traversable (for)
 import Data.Tuple.Nested ((/\), type (/\))
@@ -24,7 +24,7 @@ import Unsafe.Coerce (unsafeCoerce)
 import Web.DOM.Document (Document, createElement, createTextNode)
 import Web.DOM.Element (Element)
 import Web.DOM.Element as Element
-import Web.DOM.Node (Node)
+import Web.DOM.Node (Node, appendChild, firstChild, insertBefore, nextSibling, parentNode, removeChild, setNodeValue)
 import Web.DOM.Text as Text
 import Web.Event.Event (EventType(..))
 import Web.Event.EventTarget (EventListener, addEventListener, removeEventListener)
@@ -191,6 +191,70 @@ sameType = case _, _ of
   Fragment _, Fragment _ -> true
   FunctionComponent a, FunctionComponent b -> sameComponent a b
   _, _ -> false
+
+commitRoot :: Effect Unit
+commitRoot = do
+  ds <- Ref.read deletions
+  for_ ds commitDeletion
+  wip <- Ref.read wipRoot
+  for_ wip \root -> do
+    rec <- readFiber root
+    for_ rec.dom \dom -> commitWork dom Nothing rec.child
+    modifyFiber root _ { alternate = Nothing }
+    Ref.write (Just root) currentRoot
+  Ref.write Nothing wipRoot
+
+-- Commits a fiber and its following siblings into parentDom. prev is the last
+-- DOM node already in place in parentDom; returns the last one after this run.
+commitWork :: Node -> Maybe Node -> Maybe Fiber -> Effect (Maybe Node)
+commitWork parentDom prev = case _ of
+  Nothing -> pure prev
+  Just fiber -> do
+    rec <- readFiber fiber
+    lastPlaced <- case rec.dom of
+      Nothing -> commitWork parentDom prev rec.child
+      Just dom -> do
+        case rec.effectTag of
+          Just Placement -> placeAfter parentDom prev dom
+          Just Update -> commitUpdate dom rec
+          Nothing -> pure unit
+        void $ commitWork dom Nothing rec.child
+        pure $ Just dom
+    -- Drop the link to the previous tree so old trees can be garbage collected.
+    modifyFiber fiber _ { alternate = Nothing }
+    commitWork parentDom lastPlaced rec.sibling
+
+placeAfter :: Node -> Maybe Node -> Node -> Effect Unit
+placeAfter parentDom prev dom = do
+  next <- case prev of
+    Nothing -> firstChild parentDom
+    Just p -> nextSibling p
+  case next of
+    Just n -> insertBefore dom n parentDom
+    Nothing -> appendChild dom parentDom
+
+commitUpdate :: Node -> FiberRec -> Effect Unit
+commitUpdate dom rec = for_ rec.alternate \alt -> do
+  old <- readFiber alt
+  case old.vnode, rec.vnode of
+    HostComponent _ prevProps _, HostComponent _ nextProps _ ->
+      for_ (Element.fromNode dom) \el -> updateDOM el prevProps nextProps
+    HostText _, HostText text -> setNodeValue text dom
+    _, _ -> pure unit
+
+commitDeletion :: Fiber -> Effect Unit
+commitDeletion fiber = do
+  rec <- readFiber fiber
+  case rec.dom of
+    Just dom -> do
+      parent <- parentNode dom
+      for_ parent $ removeChild dom
+    Nothing -> go rec.child
+  where
+  go = traverse_ \f -> do
+    commitDeletion f
+    { sibling } <- readFiber f
+    go sibling
 
 performUnitOfWork :: Fiber -> Effect (Maybe Fiber)
 performUnitOfWork fiber = do

@@ -10,13 +10,14 @@ const jsx = {
   development: false,
 };
 
-// Apart from the JSX settings, every value here is the Vite 8 default, written
-// out explicitly so the build is declared rather than inherited.
+// Apart from the JSX settings and the paths that account for root being demo/,
+// every value here is the Vite 8 default, written out explicitly so the build
+// is declared rather than inherited.
 export default defineConfig({
-  root: ".",
+  root: "demo",
   base: "/",
   publicDir: "public",
-  cacheDir: "node_modules/.vite",
+  cacheDir: "../node_modules/.vite",
   appType: "spa",
 
   resolve: {
@@ -33,7 +34,7 @@ export default defineConfig({
 
   build: {
     target: "baseline-widely-available",
-    outDir: "dist",
+    outDir: "../dist",
     assetsDir: "assets",
     assetsInlineLimit: 4096,
     cssCodeSplit: true,

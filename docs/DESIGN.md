@@ -9,9 +9,10 @@ graph TD
   MiniReact --> MiniReact.js[MiniReact.js FFI]
 ```
 
-- `MiniReact`（`src/MiniReact.purs`）が本体で、React の仕組み全体を持つ。
+- `src/MiniReact.purs` が本体で、React の仕組み全体を持つ。
 - `src/MiniReact.js` は FFI で、DOM のプロパティへの代入、`===`、フレームのスケジューラ（`scheduleWork`）を持つ。
-- `jsx.js` は、JS の値を `VirtualElement` に変換するアダプタで、`main.jsx` から使う `createElement` / `Fragment` / `useState` / `render` を提供する。PureScript の構築子の `.create` を使うので、コード生成の内部表現に依存する。
+- `demo/jsx.js` は、JS の値を `VirtualElement` に変換するアダプタで、`demo/main.jsx` から使う `createElement` / `Fragment` / `useState` / `render` を提供する。PureScript の構築子の `.create` を使うので、コード生成の内部表現に依存する。
+- `demo/` が Vite のルートで、PureScript のコンパイル結果の `output/` は、`demo/jsx.js` から `../output/` で読む。
 
 ## 型
 

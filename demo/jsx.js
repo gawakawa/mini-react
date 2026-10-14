@@ -1,5 +1,5 @@
-import * as MR from "./output/MiniReact/index.js";
-import { fst, snd } from "./output/Data.Tuple/index.js";
+import * as MR from "../output/MiniReact/index.js";
+import { fst, snd } from "../output/Data.Tuple/index.js";
 
 export const Fragment = Symbol("Fragment");
 

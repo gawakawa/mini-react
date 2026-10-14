@@ -30,11 +30,9 @@ For development, see [CONTRIBUTING.md](CONTRIBUTING.md).
 ```
 .
 ├── src
-│   ├── MiniReact.purs  # Engine: fibers, reconcile, commit, hooks
-│   └── MiniReact.js    # FFI: DOM properties, ===, frame scheduler
-├── jsx.js              # JSX adapter (JS values to VirtualElement)
-├── main.jsx            # Tic-Tac-Toe demo
-├── index.js            # Entry point
+│   ├── MiniReact.purs  # Engine
+│   └── MiniReact.js    # FFI
+├── demo                # Tic-Tac-Toe demo
 ├── test                # Tests
 ├── docs
 │   └── DESIGN.md       # Design doc

@@ -1,31 +1,40 @@
 # mini-react
 
-A minimal React implementation for learning purposes. Built with Deno and TypeScript, implementing core React features including fiber architecture, reconciliation, hooks, and JSX support.
+## Overview
 
-Based on [Build Your Own React.js in 400 Lines of Code](https://webdeveloper.beehiiv.com/p/build-react-400-lines-code).
+A React clone written from scratch in PureScript, built to learn how React works inside. It renders React's [Tutorial: Tic-Tac-Toe](https://react.dev/learn/tutorial-tic-tac-toe) in the browser.
 
-## Demo
+## Features
 
-Includes React's [Tutorial: Tic-Tac-Toe](https://react.dev/learn/tutorial-tic-tac-toe) game:
+- **Fiber architecture** - Rendering is split into small units of work and spread over animation frames
+- **Reconciliation** - Only the differences from the previous tree are applied to the DOM (update, placement, deletion)
+- **Function components and `useState`**
+- **JSX** - The demo is plain JSX, converted to mini-react's typed elements by a small adapter
+- **No React dependency**
+
+## Prerequisites
+
+Nix with flakes enabled
+
+## Usage
 
 ```bash
-deno task dev
+purs-nix compile
+npm run serve
 ```
 
-## Requirements
+For development, see [CONTRIBUTING.md](CONTRIBUTING.md).
 
-Nix with flakes enabled. Run `nix develop` to enter the development shell, or use direnv (optional) for automatic environment activation.
+## Directory Structure
 
-## Development
-
-```bash
-# Start dev server
-deno task dev
-
-# Build production assets
-deno task build
-
-# Format and lint
-deno fmt
-deno lint
+```
+.
+├── src
+│   ├── MiniReact.purs  # Engine
+│   └── MiniReact.js    # FFI
+├── demo                # Tic-Tac-Toe demo
+├── test                # Tests
+├── docs
+│   └── DESIGN.md       # Design doc
+└── nix                 # Build configuration
 ```

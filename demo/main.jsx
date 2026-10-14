@@ -1,5 +1,4 @@
-import { createElement, Fragment, render, useState } from './mini-react.ts';
-import './styles.css';
+import { createElement, Fragment, render, useState } from './jsx.js';
 
 function Square({ value, onSquareClick }) {
   return (
@@ -117,4 +116,4 @@ function calculateWinner(squares) {
   return null;
 }
 
-render(<Game />, document.getElementById('root')!);
+render(<Game />, document.getElementById('root'));

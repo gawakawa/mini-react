@@ -3,9 +3,8 @@ module MiniReact
   , Prop(..)
   , Component
   , component
-  , createDOM
-  , updateDOM
   , useState
+  , render
   ) where
 
 import Prelude
@@ -15,7 +14,7 @@ import Data.Foldable (for_, traverse_)
 import Data.Maybe (Maybe(..), fromMaybe, isJust, isNothing)
 import Data.Traversable (for)
 import Data.Tuple.Nested ((/\), type (/\))
-import Effect (Effect)
+import Effect (Effect, whileE)
 import Effect.Exception (throw)
 import Effect.Ref (Ref)
 import Effect.Ref as Ref
@@ -41,10 +40,10 @@ data VirtualElement
 newtype Component = Component (forall r. (forall props. (props -> Effect VirtualElement) -> props -> r) -> r)
 
 component :: forall props. (props -> Effect VirtualElement) -> props -> VirtualElement
-component render props = FunctionComponent $ Component \k -> k render props
+component renderer props = FunctionComponent $ Component \k -> k renderer props
 
 runComponent :: Component -> Effect VirtualElement
-runComponent (Component c) = c \render props -> render props
+runComponent (Component c) = c \renderer props -> renderer props
 
 sameComponent :: Component -> Component -> Boolean
 sameComponent (Component a) (Component b) = a \ra _ -> b \rb _ -> unsafeRefEq ra rb
@@ -110,6 +109,10 @@ hookIndex = unsafePerformEffect $ Ref.new 0
 foreign import setProperty :: String -> String -> Element -> Effect Unit
 
 foreign import unsafeRefEq :: forall a b. a -> b -> Boolean
+
+type Deadline = { timeRemaining :: Effect Number }
+
+foreign import scheduleWork :: (Deadline -> Effect Unit) -> Effect Unit
 
 getDocument :: Effect Document
 getDocument = do
@@ -191,6 +194,41 @@ sameType = case _, _ of
   Fragment _, Fragment _ -> true
   FunctionComponent a, FunctionComponent b -> sameComponent a b
   _, _ -> false
+
+render :: VirtualElement -> Element -> Effect Unit
+render element container = do
+  root <- createFiber
+    { vnode: HostComponent "div" [] [ element ]
+    , dom: Just $ Element.toNode container
+    , effectTag: Nothing
+    , parent: Nothing
+    , child: Nothing
+    , sibling: Nothing
+    , alternate: Nothing
+    , hooks: []
+    }
+  Ref.write Nothing currentRoot
+  Ref.write (Just root) wipRoot
+  Ref.write (Just root) nextUnitOfWork
+  Ref.write [] deletions
+  scheduleWork workLoop
+
+workLoop :: Deadline -> Effect Unit
+workLoop deadline = do
+  whileE canWork do
+    next <- Ref.read nextUnitOfWork
+    for_ next \fiber -> do
+      n <- performUnitOfWork fiber
+      Ref.write n nextUnitOfWork
+  next <- Ref.read nextUnitOfWork
+  wip <- Ref.read wipRoot
+  when (isNothing next && isJust wip) commitRoot
+  scheduleWork workLoop
+  where
+  canWork = do
+    next <- Ref.read nextUnitOfWork
+    remaining <- deadline.timeRemaining
+    pure $ isJust next && remaining > 1.0
 
 commitRoot :: Effect Unit
 commitRoot = do
